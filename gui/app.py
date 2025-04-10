@@ -11,28 +11,38 @@ from collections import Counter, defaultdict
 import matplotlib.pyplot as plt
 import pyttsx3
 import random
+import requests
+from streamlit_lottie import st_lottie
 
-# Load models
+# Load animation
+def load_lottie_url(url):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
+
+lottie_emoji = load_lottie_url("https://lottie.host/ed7c43db-6602-43f2-83b4-c064402061e5/JQK7Xbq3Wx.json")
+
+# Models
 face_model = load_model('models/fer_cnn_model.h5')
 audio_model = load_model('models/audio_emotion_model.h5')
 
 face_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 audio_labels = ['neutral', 'calm', 'happy', 'sad', 'angry', 'fearful', 'disgust', 'surprised']
 
-# Load song dataset
+# Dataset
 try:
     songs_df = pd.read_csv("data/bollywood_songs.csv")
 except:
     songs_df = pd.DataFrame(columns=["song_name", "artist_name", "spotify_track_link", "thumbnail_link", "Sad Ballad", "Happy", "Party Anthem", "Motivational", "Romantic Ballad"])
 
-# Log file
 CSV_FILE = "results.csv"
 try:
     log_df = pd.read_csv(CSV_FILE)
 except:
     log_df = pd.DataFrame(columns=["Timestamp", "Face", "Audio", "Final"])
 
-# Emotion to genre mapping
+# Genre mapping
 emotion_genre_map = {
     "happy": ["Happy", "Party Anthem", "Motivational"],
     "sad": ["Sad Ballad"],
@@ -43,7 +53,6 @@ emotion_genre_map = {
     "disgust": ["Lyrical Rap"]
 }
 
-# Track already shown songs to avoid repeats
 if "shown_songs" not in st.session_state:
     st.session_state.shown_songs = defaultdict(set)
 
@@ -54,9 +63,9 @@ def speak(text):
         engine.say(text)
         engine.runAndWait()
     except:
-        st.warning("🗣️ Text-to-speech failed.")
+        st.warning("🗣️ TTS failed")
 
-# Face emotion
+# Face Emotion
 def predict_face_emotion():
     cam = cv2.VideoCapture(0)
     frame = None
@@ -66,27 +75,23 @@ def predict_face_emotion():
             frame = temp
         cv2.waitKey(100)
     cam.release()
-
     if frame is None:
         return None, None
 
     frame = cv2.convertScaleAbs(frame, alpha=1.5, beta=30)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     faces = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml").detectMultiScale(gray, 1.1, 5)
-
     if len(faces) == 0:
         return None, frame
 
     x, y, w, h = faces[0]
-    roi = gray[y:y + h, x:x + w]
-    roi = cv2.resize(roi, (48, 48))
+    roi = cv2.resize(gray[y:y+h, x:x+w], (48, 48))
     roi = img_to_array(roi) / 255.0
     roi = np.expand_dims(np.expand_dims(roi, axis=0), axis=-1)
-
     pred = face_model.predict(roi)[0]
     return face_labels[np.argmax(pred)], frame
 
-# Audio emotion
+# Audio Emotion
 def predict_audio_emotion():
     audio = sd.rec(int(3 * 22050), samplerate=22050, channels=1)
     sd.wait()
@@ -95,9 +100,11 @@ def predict_audio_emotion():
     pred = audio_model.predict(np.expand_dims(mfcc_scaled, axis=0))[0]
     return audio_labels[np.argmax(pred)]
 
-# App UI
-st.set_page_config(page_title="Emotion Detector", layout="centered")
-st.title("🎭 Real-Time Emotion Detector")
+# Streamlit UI
+st.set_page_config(page_title="Bollywood Emotion Detector", layout="centered")
+st.markdown("<h1 style='text-align: center; color: #e50914;'>🎭 Bollywood Emotion Detector</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: #555;'>Detect your mood & get the perfect Bollywood song 🎶</h4>", unsafe_allow_html=True)
+st_lottie(lottie_emoji, height=200, key="emotion_anim")
 
 if st.button("▶ Start Emotion Detection"):
     with st.spinner("Analyzing face..."):
@@ -108,19 +115,19 @@ if st.button("▶ Start Emotion Detection"):
     with st.spinner("Analyzing voice..."):
         audio_emotion = predict_audio_emotion()
 
-    st.success("Detection complete!")
-    st.write(f"🧠 Face: `{face_emotion or 'None'}`")
-    st.write(f"🎧 Audio: `{audio_emotion or 'None'}`")
+    st.success("✅ Detection complete!")
+    st.write(f"🧠 **Face**: `{face_emotion or 'None'}`")
+    st.write(f"🎧 **Audio**: `{audio_emotion or 'None'}`")
 
     final = Counter([e for e in [face_emotion, audio_emotion] if e]).most_common(1)
     final_emotion = final[0][0] if final else "Unknown"
     st.markdown(f"### 🎯 Final Emotion: `{final_emotion}`")
 
-    # Save log
+    # Log result
     log_df.loc[len(log_df)] = [datetime.now().strftime("%Y-%m-%d %H:%M:%S"), face_emotion or "None", audio_emotion or "None", final_emotion]
     log_df.to_csv(CSV_FILE, index=False)
 
-    # 🎶 Suggest a song
+    # Song Suggestion
     st.subheader("🎶 Suggested Bollywood Song")
     genres = emotion_genre_map.get(final_emotion.lower(), [])
     filtered = songs_df.copy()
@@ -134,7 +141,6 @@ if st.button("▶ Start Emotion Detection"):
     if not remaining.empty:
         song = remaining.sample(1).iloc[0]
         st.session_state.shown_songs[final_emotion].add(song["song_name"])
-
         st.write(f"**{song['song_name']}** by *{song['artist_name']}*")
         speak(f"You seem {final_emotion}. Here's a song for you: {song['song_name']} by {song['artist_name']}.")
 
@@ -150,7 +156,7 @@ if st.button("▶ Start Emotion Detection"):
     else:
         st.info("No more new songs left for this emotion!")
 
-# Logs & Charts
+# History
 st.subheader("📜 Prediction History")
 st.dataframe(log_df)
 st.download_button("📥 Download CSV", log_df.to_csv(index=False), "emotion_log.csv")
