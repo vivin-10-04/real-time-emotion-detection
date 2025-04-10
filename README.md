@@ -84,6 +84,7 @@ streamlit run gui/app.py
 ## 👨‍💻 Author
 
 Made with ❤️ by [Jatin Verma](https://github.com/jatinverma2703)
+- [Dixit](https://github.com/DIXIT82)
 
 ---
 
