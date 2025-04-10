@@ -10,6 +10,8 @@
 - 👀 Detects **facial emotions** using webcam and CNN (FER2013)  
 - 🎧 Detects **voice emotions** using mic and MFCC + DNN (RAVDESS)  
 - 🎯 Combines both predictions to show a **final emotion**  
+- 🎶 Suggests a **Bollywood song** with album art and playable link  
+- 🔊 Speaks the emotion and song using **Text-to-Speech**  
 - 📊 Shows emotion **history**, pie chart, and timeline  
 - 🧪 All wrapped inside a user-friendly **Streamlit GUI**  
 - 📦 Logs every prediction to a downloadable `results.csv`  
@@ -30,6 +32,8 @@ pip install -r requirements.txt
 streamlit run gui/app.py
 ```
 
+> ⚠️ Make sure your webcam and mic are accessible.
+
 ---
 
 ## 🧠 Tech Stack
@@ -37,15 +41,20 @@ streamlit run gui/app.py
 - **Frontend**: Streamlit  
 - **Face Model**: CNN trained on FER2013  
 - **Audio Model**: DNN trained on RAVDESS  
-- **Libraries**: OpenCV, Librosa, SoundDevice, TensorFlow/Keras, Pandas, Matplotlib  
+- **Libraries**:
+  - OpenCV  
+  - TensorFlow / Keras  
+  - LibROSA + SoundDevice  
+  - Pyttsx3  
+  - Pandas + Matplotlib  
 
 ---
 
 ## 📸 Screenshots
 
-| GUI | Chart View |
-|-----|------------|
-| *(Add your screenshots here)* | *(or a GIF preview)* |
+| GUI Interface | Emotion Graphs |
+|---------------|----------------|
+| *(Insert GUI screenshot or GIF here)* | *(Insert pie + timeline chart here)* |
 
 ---
 
@@ -60,17 +69,17 @@ streamlit run gui/app.py
 
 ## 📥 Output Log
 
-- All results are saved to `results.csv`  
+- All predictions are saved to `results.csv`  
 - Format includes: `Timestamp`, `Face`, `Audio`, `Final`  
-- Download CSV directly from the Streamlit GUI  
+- Can be downloaded from GUI  
 
 ---
 
 ## 📊 Visualization
 
-- Pie chart of final emotion distribution  
-- Timeline chart of emotional trends over time  
-- Live data table with every prediction  
+- Pie chart showing emotion distribution  
+- Timeline showing emotion over time  
+- Interactive data table of results  
 
 ---
 
@@ -78,19 +87,25 @@ streamlit run gui/app.py
 
 - [FER2013 Facial Emotion Dataset (Kaggle)](https://www.kaggle.com/datasets/msambare/fer2013)  
 - [RAVDESS Emotional Speech Audio (Kaggle)](https://www.kaggle.com/datasets/uwrfkaggler/ravdess-emotional-speech-audio)  
+- [Bollywood Songs Dataset (Kaggle)](https://www.kaggle.com/)  
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Authors
 
-Made with ❤️ by [Jatin Verma](https://github.com/jatinverma2703)
-- [Dixit](https://github.com/DIXIT82)
+- [Jatin Verma](https://github.com/jatinverma2703)  
+- [Dixit](https://github.com/DIXIT82)  
 
 ---
 
-## ⭐ Future Features
+## 💡 Future Ideas
 
 - 🌐 Deploy to Streamlit Cloud  
 - 🖥️ Add continuous webcam preview  
 - 📱 Build mobile-friendly version  
-- 🧠 Use attention-based models for fusion  
+- 🎼 Auto-tag songs using valence scores  
+- 🔐 Add Spotify login + playlist export  
+
+---
+
+> Made with ❤️ using Machine Learning, Audio Vision, and Bollywood 🎶
