@@ -6,8 +6,10 @@ import librosa
 import sounddevice as sd
 from keras.models import load_model
 from keras.preprocessing.image import img_to_array
-from collections import Counter
 from datetime import datetime
+from collections import Counter
+import matplotlib.pyplot as plt
+import pyttsx3
 
 # Load models
 face_model = load_model('models/fer_cnn_model.h5')
@@ -16,18 +18,43 @@ audio_model = load_model('models/audio_emotion_model.h5')
 face_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 audio_labels = ['neutral', 'calm', 'happy', 'sad', 'angry', 'fearful', 'disgust', 'surprised']
 
-# Logging setup
+# Load your Kaggle Bollywood songs dataset
+try:
+    songs_df = pd.read_csv("data/bollywood_songs.csv")
+except:
+    songs_df = pd.DataFrame(columns=["song_name", "artist_name", "spotify_track_link", "thumbnail_link"])
+
+# Emotion to song mapping
+emotion_map = {
+    "happy": ["Ilahi", "Zinda", "Gallan Goodiyan"],
+    "sad": ["Channa Mereya", "Agar Tum Saath Ho", "Tujhe Bhula Diya"],
+    "angry": ["Sadda Haq", "Ziddi Dil"],
+    "neutral": ["Kabira", "Phir Se Ud Chala"],
+    "surprised": ["Oh Gujariya", "Dil Dhadakne Do"],
+    "fearful": ["Bhaag Milkha Bhaag"],
+    "disgust": ["Emotional Atyachar"]
+}
+
 CSV_FILE = "results.csv"
 try:
     log_df = pd.read_csv(CSV_FILE)
 except:
     log_df = pd.DataFrame(columns=["Timestamp", "Face", "Audio", "Final"])
 
+# TTS function
+def speak(text):
+    try:
+        engine = pyttsx3.init()
+        engine.say(text)
+        engine.runAndWait()
+    except:
+        st.warning("🗣️ Text-to-speech failed (pyttsx3 issue).")
+
 # Predict face emotion
 def predict_face_emotion():
     cam = cv2.VideoCapture(0)
     frame = None
-    for _ in range(15):  # warmup
+    for _ in range(10):
         ret, temp = cam.read()
         if ret:
             frame = temp
@@ -69,27 +96,27 @@ def predict_audio_emotion():
     return audio_labels[np.argmax(prediction)]
 
 # Streamlit UI
-st.set_page_config(page_title="Real-Time Emotion Detector", layout="centered")
+st.set_page_config(page_title="Emotion Detector", layout="centered")
 st.title("🎭 Real-Time Emotion Detector (Face + Voice)")
 
 if st.button("▶ Start Emotion Detection"):
-    with st.spinner("Capturing face..."):
+    with st.spinner("Analyzing face..."):
         face_emotion, frame = predict_face_emotion()
     if frame is not None:
-        st.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), caption="Captured Frame", channels="RGB")
+        st.image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB), caption="Captured Face")
 
-    with st.spinner("Recording audio..."):
+    with st.spinner("Analyzing voice..."):
         audio_emotion = predict_audio_emotion()
 
-    st.success("✅ Prediction Complete!")
+    st.success("Detection complete!")
     st.write(f"🧠 **Face Emotion**: `{face_emotion or 'Not Detected'}`")
-    st.write(f"🎧 **Audio Emotion**: `{audio_emotion}`")
+    st.write(f"🎧 **Audio Emotion**: `{audio_emotion or 'Not Detected'}`")
 
-    final = Counter([e for e in [face_emotion, audio_emotion] if e is not None]).most_common(1)
+    final = Counter([e for e in [face_emotion, audio_emotion] if e]).most_common(1)
     final_emotion = final[0][0] if final else "Unknown"
-    st.markdown(f"### 🎯 **Final Emotion**: `{final_emotion}`")
+    st.markdown(f"### 🎯 Final Emotion: `{final_emotion}`")
 
-    # Append to log
+    # Log to CSV
     log_df.loc[len(log_df)] = [
         datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         face_emotion or "None",
@@ -98,36 +125,56 @@ if st.button("▶ Start Emotion Detection"):
     ]
     log_df.to_csv(CSV_FILE, index=False)
 
-# History section
+    # 🎶 Suggested Bollywood Song
+    st.subheader("🎶 Suggested Bollywood Song")
+    titles = emotion_map.get(final_emotion.lower(), [])
+    matched = songs_df[songs_df["song_name"].isin(titles)]
+
+    if not matched.empty:
+        song = matched.sample(1).iloc[0]
+        track = song['song_name']
+        artist = song['artist_name']
+        link = song.get("spotify_track_link", "")
+        image = song.get("thumbnail_link", "")
+
+        st.write(f"**{track}** by *{artist}*")
+        speak(f"You seem {final_emotion}. Here's a song for you: {track} by {artist}.")
+
+        if pd.notna(image):
+            st.image(image, width=300)
+
+        if "youtube.com" in link or "spotify.com" in link:
+            if "v=" in link:
+                video_id = link.split("v=")[-1].split("&")[0]
+                st.video(f"https://www.youtube.com/embed/{video_id}")
+            else:
+                st.markdown(f"[▶️ Listen Here]({link})")
+        else:
+            st.markdown(f"[▶️ Listen Here]({link})")
+    else:
+        st.info("No matching song found for this emotion.")
+
+# Logs & Charts
 st.subheader("📜 Prediction History")
 st.dataframe(log_df)
+st.download_button("📥 Download CSV", log_df.to_csv(index=False), "emotion_log.csv")
 
-st.download_button(
-    "📥 Download CSV Log",
-    data=log_df.to_csv(index=False),
-    file_name="emotion_log.csv",
-    mime="text/csv"
-)
-import matplotlib.pyplot as plt
-
-# Pie Chart for emotion distribution
+# Pie Chart
 if not log_df.empty:
     st.subheader("📊 Emotion Distribution")
     fig, ax = plt.subplots()
-    log_df['Final'].value_counts().plot.pie(autopct='%1.1f%%', startangle=90, ax=ax, shadow=True)
-    ax.set_ylabel("")  # Remove y-axis label
-    ax.set_title("Final Emotion Breakdown")
+    log_df["Final"].value_counts().plot.pie(autopct='%1.1f%%', startangle=90, ax=ax)
+    ax.set_ylabel("")
     st.pyplot(fig)
-    # Emotion Timeline Line Chart
-st.subheader("📈 Emotion Timeline")
 
+# Line Chart
 if not log_df.empty:
-    timeline_df = log_df.copy()
-    timeline_df["Timestamp"] = pd.to_datetime(timeline_df["Timestamp"])
-
-    fig2, ax2 = plt.subplots(figsize=(10, 4))
-    ax2.plot(timeline_df["Timestamp"], timeline_df["Final"], marker='o', linestyle='-')
+    st.subheader("📈 Emotion Over Time")
+    timeline = log_df.copy()
+    timeline["Timestamp"] = pd.to_datetime(timeline["Timestamp"])
+    fig2, ax2 = plt.subplots()
+    ax2.plot(timeline["Timestamp"], timeline["Final"], marker='o')
     ax2.set_ylabel("Final Emotion")
-    ax2.set_title("Timeline of Final Emotion Predictions")
+    ax2.set_xlabel("Time")
     plt.xticks(rotation=45)
     st.pyplot(fig2)

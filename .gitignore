@@ -1,11 +1,7 @@
 __pycache__/
-*.pyc
-*.pkl
 *.h5
+results.csv
 *.wav
-*.mp3
-.DS_Store
+*.mp4
 .env
-.vscode/
-.idea/
-env/
+.DS_Store
