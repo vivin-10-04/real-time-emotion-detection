@@ -10,6 +10,7 @@ from datetime import datetime
 from collections import Counter
 import matplotlib.pyplot as plt
 import pyttsx3
+import random
 
 # Load models
 face_model = load_model('models/fer_cnn_model.h5')
@@ -18,13 +19,13 @@ audio_model = load_model('models/audio_emotion_model.h5')
 face_labels = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 audio_labels = ['neutral', 'calm', 'happy', 'sad', 'angry', 'fearful', 'disgust', 'surprised']
 
-# Load your Kaggle Bollywood songs dataset
+# Load Bollywood song dataset
 try:
     songs_df = pd.read_csv("data/bollywood_songs.csv")
 except:
     songs_df = pd.DataFrame(columns=["song_name", "artist_name", "spotify_track_link", "thumbnail_link"])
 
-# Emotion to song mapping
+# Emotion to sample song names (used for matching)
 emotion_map = {
     "happy": ["Ilahi", "Zinda", "Gallan Goodiyan"],
     "sad": ["Channa Mereya", "Agar Tum Saath Ho", "Tujhe Bhula Diya"],
@@ -34,6 +35,10 @@ emotion_map = {
     "fearful": ["Bhaag Milkha Bhaag"],
     "disgust": ["Emotional Atyachar"]
 }
+
+# Initialize session state for unique song per emotion
+if "last_song" not in st.session_state:
+    st.session_state.last_song = {}
 
 CSV_FILE = "results.csv"
 try:
@@ -131,9 +136,18 @@ if st.button("▶ Start Emotion Detection"):
     matched = songs_df[songs_df["song_name"].isin(titles)]
 
     if not matched.empty:
-        song = matched.sample(1).iloc[0]
-        track = song['song_name']
-        artist = song['artist_name']
+        # Filter out last shown song
+        last = st.session_state.last_song.get(final_emotion)
+        options = matched[~matched["song_name"].isin([last])] if last else matched
+        if options.empty:  # if all are shown, allow all again
+            options = matched
+        song = options.sample(1).iloc[0]
+
+        # Save the song shown for this emotion
+        st.session_state.last_song[final_emotion] = song["song_name"]
+
+        track = song["song_name"]
+        artist = song["artist_name"]
         link = song.get("spotify_track_link", "")
         image = song.get("thumbnail_link", "")
 
@@ -154,12 +168,12 @@ if st.button("▶ Start Emotion Detection"):
     else:
         st.info("No matching song found for this emotion.")
 
-# Logs & Charts
+# Logs
 st.subheader("📜 Prediction History")
 st.dataframe(log_df)
 st.download_button("📥 Download CSV", log_df.to_csv(index=False), "emotion_log.csv")
 
-# Pie Chart
+# Charts
 if not log_df.empty:
     st.subheader("📊 Emotion Distribution")
     fig, ax = plt.subplots()
@@ -167,8 +181,6 @@ if not log_df.empty:
     ax.set_ylabel("")
     st.pyplot(fig)
 
-# Line Chart
-if not log_df.empty:
     st.subheader("📈 Emotion Over Time")
     timeline = log_df.copy()
     timeline["Timestamp"] = pd.to_datetime(timeline["Timestamp"])
