@@ -21,7 +21,7 @@ def extract_features(file_path):
         mfccs = librosa.feature.mfcc(y=audio, sr=sample_rate, n_mfcc=40)
         return np.mean(mfccs.T, axis=0)
     except Exception as e:
-        print(f"❌ Error loading {file_path}: {e}")
+        print(f" Error loading {file_path}: {e}")
         return None
 
 features = []
@@ -41,5 +41,5 @@ for root, _, files in os.walk(DATA_PATH):
                     features.append(mfcc)
                     labels.append(emotion)
 
-print(f"\n✅ Total files loaded: {len(features)}")
+print(f"\n Total files loaded: {len(features)}")
 print(f"🎭 Emotion labels found: {set(labels)}")
