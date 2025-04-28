@@ -94,7 +94,7 @@ streamlit run gui/app.py
 ## 👨‍💻 Authors
 
 - [Jatin Verma](https://github.com/jatinverma2703)  
-- [Dixit](https://github.com/DIXIT82)  
+- [Vivin Pathak](https://github.com/vivin-10-04)
 
 ---
 
