@@ -13,7 +13,7 @@ import pyttsx3
 import random
 import requests
 from streamlit_lottie import st_lottie
-
+#allows to integrate Lottie animations
 # Load animation
 def load_lottie_url(url):
     r = requests.get(url)
