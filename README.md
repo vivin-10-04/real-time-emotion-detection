@@ -1,4 +1,4 @@
-<h1 align="center">🎭 Real-Time Emotion Detection</h1>
+<h1 align="center">🎭MoodSync: Real-time Emotion Detection and Song Recommendation</h1>
 <p align="center">
   👁️ Facial + 🎙️ Voice Emotion Recognition using Deep Learning & Streamlit
 </p>
